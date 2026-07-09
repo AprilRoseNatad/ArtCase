@@ -35,3 +35,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Prisma generated client
+generated/prisma/
+
+# Firebase Admin private key
+artcase-app-firebase-adminsdk-fbsvc-586b19b89a.json

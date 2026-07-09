@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  PARTICIPANT
+  ORGANIZER
+  CURATOR
+}
+
+enum ContestStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  FINISHED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  WITHDRAWN
+}
+
+model User {
+  id          String   @id @default(uuid())
+  firebaseUid String   @unique
+  email       String   @unique
+  username    String
+  avatarUrl   String?
+  bio         String?
+  role        Role     @default(PARTICIPANT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizedContests Contest[]
+  submissions       Submission[]
+  scores            Score[]
+  badges            UserBadge[]
+  curatorAssignments CuratorAssignment[]
+}
+
+model Contest {
+  id          String        @id @default(uuid())
+  title       String
+  description String
+  rules       String
+  status      ContestStatus @default(DRAFT)
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime      @default(now())
+
+  organizerId String
+  organizer   User @relation(fields: [organizerId], references: [id])
+
+  submissions Submission[]
+  criteria    Criteria[]
+  curators    CuratorAssignment[]
+  rewards     Reward[]
+}
+
+model Submission {
+  id          String           @id @default(uuid())
+  title       String
+  description String
+  imageUrl    String
+  status      SubmissionStatus @default(SUBMITTED)
+  createdAt   DateTime         @default(now())
+
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id])
+
+  participantId String
+  participant   User @relation(fields: [participantId], references: [id])
+
+  scores Score[]
+}
+
+model Criteria {
+  id          String @id @default(uuid())
+  name        String
+  description String
+  weight      Float
+
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id])
+
+  scores Score[]
+}
+
+model CuratorAssignment {
+  id String @id @default(uuid())
+
+  curatorId String
+  curator User @relation(fields: [curatorId], references: [id])
+
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id])
+}
+
+model Score {
+  id      String @id @default(uuid())
+  score   Float
+  comment String?
+
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id])
+
+  curatorId String
+  curator   User @relation(fields: [curatorId], references: [id])
+
+  criteriaId String
+  criteria   Criteria @relation(fields: [criteriaId], references: [id])
+}
+
+model Badge {
+  id          String @id @default(uuid())
+  name        String
+  description String
+  iconUrl     String?
+
+  users UserBadge[]
+}
+
+model UserBadge {
+  id String @id @default(uuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id])
+
+  badgeId String
+  badge   Badge @relation(fields: [badgeId], references: [id])
+
+  earnedAt DateTime @default(now())
+}
+
+model Reward {
+  id          String @id @default(uuid())
+  title       String
+  description String
+  placement   Int
+
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id])
+}
