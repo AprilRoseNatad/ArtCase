@@ -15,7 +15,8 @@ export async function verifyToken(
       });
     }
 
-    const token = authHeader.split("Bearer ")[1];
+    // Safely split after ensuring authHeader is defined and starts with "Bearer "
+    const token = authHeader.split(" ")[1];
 
     if (!token) {
       return res.status(401).json({
@@ -24,13 +25,13 @@ export async function verifyToken(
     }
 
     const decoded = await firebaseAuth.verifyIdToken(token);
-
     req.user = decoded;
 
     next();
   } catch (error) {
+    console.error("Token verification error:", error);
     return res.status(401).json({
-      message: "Invalid token",
+      message: "Invalid or expired token",
     });
   }
 }

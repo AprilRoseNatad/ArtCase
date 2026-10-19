@@ -9,8 +9,15 @@ datasource db {
 
 enum Role {
   PARTICIPANT
-  ORGANIZER
+  COORDINATOR
   CURATOR
+  ADMIN
+}
+
+enum RoleRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum ContestStatus {
@@ -29,18 +36,20 @@ model User {
   id          String   @id @default(uuid())
   firebaseUid String   @unique
   email       String   @unique
-  username    String
+  username    String   @db.VarChar(30)
   avatarUrl   String?
   bio         String?
   role        Role     @default(PARTICIPANT)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  organizedContests Contest[]
-  submissions       Submission[]
-  scores            Score[]
-  badges            UserBadge[]
-  curatorAssignments CuratorAssignment[]
+  coordinatedContests Contest[]
+  submissions         Submission[]
+  scores              Score[]
+  badges              UserBadge[]
+  curatorAssignments  CuratorAssignment[]
+  roleRequests        RoleRequest[]
+  reviewedRequests    RoleRequest[]       @relation("RoleRequestReviewer")
 }
 
 model Contest {
@@ -53,8 +62,8 @@ model Contest {
   endDate     DateTime
   createdAt   DateTime      @default(now())
 
-  organizerId String
-  organizer   User @relation(fields: [organizerId], references: [id])
+  coordinatorId String
+  coordinator   User @relation(fields: [coordinatorId], references: [id])
 
   submissions Submission[]
   criteria    Criteria[]
@@ -74,7 +83,7 @@ model Submission {
   contest   Contest @relation(fields: [contestId], references: [id])
 
   participantId String
-  participant   User @relation(fields: [participantId], references: [id])
+  participant   User   @relation(fields: [participantId], references: [id])
 
   scores Score[]
 }
@@ -95,14 +104,14 @@ model CuratorAssignment {
   id String @id @default(uuid())
 
   curatorId String
-  curator User @relation(fields: [curatorId], references: [id])
+  curator   User   @relation(fields: [curatorId], references: [id])
 
   contestId String
   contest   Contest @relation(fields: [contestId], references: [id])
 }
 
 model Score {
-  id      String @id @default(uuid())
+  id      String  @id @default(uuid())
   score   Float
   comment String?
 
@@ -110,14 +119,14 @@ model Score {
   submission   Submission @relation(fields: [submissionId], references: [id])
 
   curatorId String
-  curator   User @relation(fields: [curatorId], references: [id])
+  curator   User   @relation(fields: [curatorId], references: [id])
 
   criteriaId String
   criteria   Criteria @relation(fields: [criteriaId], references: [id])
 }
 
 model Badge {
-  id          String @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
   description String
   iconUrl     String?
@@ -129,10 +138,10 @@ model UserBadge {
   id String @id @default(uuid())
 
   userId String
-  user   User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 
   badgeId String
-  badge   Badge @relation(fields: [badgeId], references: [id])
+  badge   Badge  @relation(fields: [badgeId], references: [id])
 
   earnedAt DateTime @default(now())
 }
@@ -145,4 +154,25 @@ model Reward {
 
   contestId String
   contest   Contest @relation(fields: [contestId], references: [id])
+}
+
+model RoleRequest {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  requestedRole Role
+
+  status RoleRequestStatus @default(PENDING)
+
+  reason String?
+
+  reviewedById String?
+  reviewedBy   User?   @relation("RoleRequestReviewer", fields: [reviewedById], references: [id])
+
+  rejectionReason String?
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
 }
