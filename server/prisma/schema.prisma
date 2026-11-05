@@ -20,6 +20,23 @@ enum RoleRequestStatus {
   REJECTED
 }
 
+enum ArtworkCategory {
+  DIGITAL
+  TRADITIONAL
+  GRAPHIC
+  AI
+  FANART
+  THREE_D
+  PIXEL
+}
+
+enum ArtworkStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
 enum ContestStatus {
   DRAFT
   OPEN
@@ -50,6 +67,35 @@ model User {
   curatorAssignments  CuratorAssignment[]
   roleRequests        RoleRequest[]
   reviewedRequests    RoleRequest[]       @relation("RoleRequestReviewer")
+  artworks            Artwork[]           @relation("ArtworkCreator")
+  reviewedArtworks    Artwork[]           @relation("ArtworkReviewer")
+}
+
+
+model Artwork {
+  id          String          @id @default(uuid())
+  title       String          @db.VarChar(100)
+  description String?         @db.VarChar(2000)
+  imageUrl    String
+  category    ArtworkCategory
+
+  status           ArtworkStatus @default(PENDING)
+  isPublic         Boolean       @default(true)
+  moderationReason String?       @db.VarChar(1000)
+  reviewedAt       DateTime?
+  reviewedById     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creatorId String
+  creator   User   @relation("ArtworkCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  reviewer User? @relation("ArtworkReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, isPublic, createdAt])
+  @@index([creatorId])
+  @@index([reviewedById])
 }
 
 model Contest {

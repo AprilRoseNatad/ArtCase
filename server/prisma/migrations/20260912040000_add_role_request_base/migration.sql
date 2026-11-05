@@ -1,0 +1,20 @@
+-- Reconstruct the original role-request schema for migration replay.
+CREATE TYPE "RequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+CREATE TABLE "RoleRequest" (
+    "id" TEXT NOT NULL,
+    "requestedRole" "Role" NOT NULL,
+    "status" "RequestStatus" NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "RoleRequest_pkey" PRIMARY KEY ("id")
+);
+
+ALTER TABLE "RoleRequest"
+ADD CONSTRAINT "RoleRequest_userId_fkey"
+FOREIGN KEY ("userId")
+REFERENCES "User"("id")
+ON DELETE RESTRICT
+ON UPDATE CASCADE;
