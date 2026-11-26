@@ -1,54 +1,86 @@
 import prisma from "../config/prisma.js";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { Role } from "../../generated/prisma/index.js";
+import { Prisma, Role } from "../../generated/prisma/index.js";
 
 export async function syncUser(
   firebaseUser: DecodedIdToken,
   username?: string
 ) {
-  // 1. Return existing user if present
+  // 1. Check whether the Firebase account already exists.
   const existingUser = await prisma.user.findUnique({
-    where: {
-      firebaseUid: firebaseUser.uid,
-    },
+    where: { firebaseUid: firebaseUser.uid },
   });
 
   if (existingUser) {
-    return existingUser;
+  if (username?.trim()) {
+    return prisma.user.update({
+      where: { firebaseUid: firebaseUser.uid },
+      data: {
+        username: username.trim().slice(0, 30),
+      },
+    });
   }
 
-  // 2. Firebase should provide an email
+  return existingUser;
+}
+
+  // 2. Require an email address.
   if (!firebaseUser.email) {
     throw new Error("Authenticated user does not have an email address");
   }
 
-  // 3. Set default fallback username
+  // 3. Determine the username.
   const usernameCandidate =
-  username?.trim() ||
-  firebaseUser.name?.trim() ||
-  firebaseUser.email.split("@")[0] ||
-  "User";
+    username?.trim() ||
+    firebaseUser.name?.trim() ||
+    firebaseUser.email.split("@")[0] ||
+    "User";
 
   const defaultUsername = usernameCandidate.slice(0, 30);
 
-  // 4. Determine avatar
+  // 4. Determine the avatar.
   const avatar =
     firebaseUser.picture ||
     `https://api.dicebear.com/10.x/clay/svg?seed=${encodeURIComponent(
       firebaseUser.uid
     )}`;
 
-  // 5. ALWAYS create new users as PARTICIPANT.
-  // Never accept a role from the client.
-  const newUser = await prisma.user.create({
-    data: {
-      firebaseUid: firebaseUser.uid,
-      email: firebaseUser.email,
-      username: defaultUsername,
-      avatarUrl: avatar,
-      role: Role.PARTICIPANT,
-    },
-  });
+  try {
+    // 5. Create every new account as PARTICIPANT.
+    return await prisma.user.create({
+      data: {
+        firebaseUid: firebaseUser.uid,
+        email: firebaseUser.email,
+        username: defaultUsername,
+        avatarUrl: avatar,
+        role: Role.PARTICIPANT,
+      },
+    });
+  } catch (error) {
+    // 6. Handle simultaneous requests for the same Firebase account.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const user = await prisma.user.findUnique({
+  where: { firebaseUid: firebaseUser.uid },
+});
 
-  return newUser;
+  if (user) {
+    if (username?.trim()) {
+      return prisma.user.update({
+        where: { firebaseUid: firebaseUser.uid },
+        data: {
+          username: username.trim().slice(0, 30),
+        },
+      });
+    }
+
+    return user;
+  }
+    }
+
+    // Do not silently accept unrelated email conflicts.
+    throw error;
+  }
 }
