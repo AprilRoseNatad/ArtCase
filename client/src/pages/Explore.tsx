@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Sparkles, Palette, Heart, Brush, Boxes, Grid, Clock, Layout, Layers, PenTool, Eye, History, LayoutGrid, List, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -38,6 +39,7 @@ export default function Explore() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const navigate = useNavigate();
 
   const filteredArtworks = MOCK_ARTWORKS
     .filter((art) => (activeCategory === "all" || art.category === activeCategory) && art.title.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -59,9 +61,10 @@ export default function Explore() {
           <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search artworks..." className="w-full bg-transparent px-3.5 py-2.5 text-xs sm:text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/60" />
         </div>
 
-        <button className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#1e40af] via-[#1d4ed8] to-[#5b21b6] px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all shrink-0 active:scale-95">
-          <Plus className="h-4 w-4" />
-          <span>Upload Artwork</span>
+        <button onClick={() => navigate("/artworks/upload")}
+          className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#1e40af] via-[#1d4ed8] to-[#5b21b6] px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-md hover:brightness-110 transition-all shrink-0 active:scale-95">
+            <Plus className="h-4 w-4" />
+              <span>Upload Artwork</span>
         </button>
       </div>
 

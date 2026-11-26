@@ -1,3 +1,4 @@
+
 import type { Request, Response, NextFunction } from "express";
 import { firebaseAuth } from "../config/firebase.js";
 
@@ -15,8 +16,7 @@ export async function verifyToken(
       });
     }
 
-    // Safely split after ensuring authHeader is defined and starts with "Bearer "
-    const token = authHeader.split(" ")[1];
+    const token = authHeader.slice(7).trim();
 
     if (!token) {
       return res.status(401).json({
@@ -25,11 +25,13 @@ export async function verifyToken(
     }
 
     const decoded = await firebaseAuth.verifyIdToken(token);
+
     req.user = decoded;
 
-    next();
+    return next();
   } catch (error) {
     console.error("Token verification error:", error);
+
     return res.status(401).json({
       message: "Invalid or expired token",
     });

@@ -25,7 +25,14 @@ export async function syncAuthUser(req: Request, res: Response) {
       result.data.username
     );
 
-    return res.status(200).json(user);
+    return res.status(200).json({
+  id: user.id,
+  username: user.username,
+  email: user.email,
+  avatarUrl: user.avatarUrl,
+  role: user.role,
+});
+
   } catch (error) {
     console.error(error);
 

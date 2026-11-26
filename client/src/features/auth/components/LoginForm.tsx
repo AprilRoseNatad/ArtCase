@@ -1,17 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, type AuthError } from "firebase/auth";
 import { auth } from "@/config/firebase";
+import { useAuth } from "@/hooks/useAuth";
 import { Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { PaintLoader } from "@/components/common/PaintLoader";
 
 export function LoginForm() {
   const navigate = useNavigate();
+  const { appUser, loading: authLoading } = useAuth();
   const [form, setForm] = useState({ Email: "", Password: "" });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+      useEffect(() => {
+      if (!authLoading && appUser) {
+        navigate("/home", { replace: true });
+      }
+    }, [authLoading, appUser, navigate]);
 
   // General auth error message
   const [authErrorMsg, setAuthErrorMsg] = useState<string | null>(null);
@@ -24,63 +32,51 @@ export function LoginForm() {
     if (e.target.name === "Email") setEmailFormatError(null);
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
-
-  const syncBackend = async (token: string) => {
-    const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000"}/auth/sync`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error("Failed to sync login data with server.");
-  };
-
+  
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthErrorMsg(null);
-    setEmailFormatError(null);
+  e.preventDefault();
+  setAuthErrorMsg(null);
+  setEmailFormatError(null);
 
-    if (!form.Email || !form.Email.includes("@")) {
-      setEmailFormatError("Please enter a valid email address.");
-      setForm((prev) => ({ ...prev, Email: "", Password: "" }));
-      return;
-    }
+  if (!form.Email || !form.Email.includes("@")) {
+    setEmailFormatError("Please enter a valid email address.");
+    setForm((prev) => ({ ...prev, Email: "", Password: "" }));
+    return;
+  }
 
-    if (!form.Password) {
+  if (!form.Password) {
+    setAuthErrorMsg("Invalid email or password.");
+    setForm((prev) => ({ ...prev, Email: "", Password: "" }));
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    await signInWithEmailAndPassword(auth, form.Email, form.Password);
+  } catch (err: unknown) {
+    console.error("Login Error:", err);
+    setForm((prev) => ({ ...prev, Email: "", Password: "" }));
+
+    const authErr = err as AuthError;
+
+    if (!navigator.onLine || authErr?.code === "auth/network-request-failed") {
+      toast.error("No internet connection");
+    } else if (
+      authErr?.code === "auth/invalid-credential" ||
+      authErr?.code === "auth/wrong-password" ||
+      authErr?.code === "auth/user-not-found"
+    ) {
       setAuthErrorMsg("Invalid email or password.");
-      setForm((prev) => ({ ...prev, Email: "", Password: "" }));
-      return;
+    } else if (authErr?.code === "auth/invalid-email") {
+      setEmailFormatError("Invalid email format.");
+    } else {
+      toast.error("Something went wrong");
     }
-
-    setLoading(true);
-
-    try {
-      const res = await signInWithEmailAndPassword(auth, form.Email, form.Password);
-      const token = await res.user.getIdToken();
-      await syncBackend(token);
-      navigate("/home");
-    } catch (err: unknown) {
-      console.error("Login Error:", err);
-
-      // Clear both email and password fields on failed authentication for enhanced security
-      setForm((prev) => ({ ...prev, Email: "", Password: "" }));
-
-      const authErr = err as AuthError;
-      if (!navigator.onLine || authErr?.code === "auth/network-request-failed") {
-        toast.error("No internet connection");
-      } else if (
-        authErr?.code === "auth/invalid-credential" ||
-        authErr?.code === "auth/wrong-password" ||
-        authErr?.code === "auth/user-not-found"
-      ) {
-        setAuthErrorMsg("Invalid email or password.");
-      } else if (authErr?.code === "auth/invalid-email") {
-        setEmailFormatError("Invalid email format.");
-      } else {
-        toast.error("Something went wrong");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
@@ -88,10 +84,7 @@ export function LoginForm() {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account consent" });
 
-      const res = await signInWithPopup(auth, provider);
-      const token = await res.user.getIdToken();
-      await syncBackend(token);
-      navigate("/home");
+      await signInWithPopup(auth, provider);
     } catch (err: unknown) {
       console.error("Google Auth Error:", err);
 
@@ -170,7 +163,7 @@ export function LoginForm() {
               value={form.Email}
               onChange={onChange}
               placeholder="Email"
-              autoComplete="off"
+              autoComplete="username"
               className={`w-full rounded-xl border bg-background/50 py-3 pl-11 pr-4 text-sm text-foreground outline-none transition-all focus:ring-1 ${
                 emailFormatError || authErrorMsg
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500"
@@ -191,7 +184,7 @@ export function LoginForm() {
               value={form.Password}
               onChange={onChange}
               placeholder="Password"
-              autoComplete="new-password"
+              autoComplete="current-password"
               className={`w-full rounded-xl border bg-background/50 py-3 pl-11 pr-11 text-sm text-foreground outline-none transition-all focus:ring-1 ${
                 authErrorMsg
                   ? "border-red-500 focus:border-red-500 focus:ring-red-500"

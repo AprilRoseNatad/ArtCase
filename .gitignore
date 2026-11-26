@@ -5,9 +5,13 @@ node_modules/
 dist/
 dist-ssr/
 
+# Firebase Admin credentials
+*firebase-adminsdk*.json
+
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Logs
 logs/
@@ -38,6 +42,3 @@ Thumbs.db
 
 # Prisma generated client
 generated/prisma/
-
-# Firebase Admin private key
-artcase-app-firebase-adminsdk-fbsvc-586b19b89a.json
